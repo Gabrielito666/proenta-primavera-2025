@@ -1,0 +1,1 @@
+xelatex -interaction=nonstopmode planificacion.ltx
