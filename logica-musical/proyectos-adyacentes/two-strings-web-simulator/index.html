@@ -1,0 +1,334 @@
+<html lang="en" lexid="30"><head lexid="28"><meta charset="UTF-8" lexid="21"><meta name="viewport" content="width=device-width, initial-scale=1.0" lexid="22"><title lexid="23">Document</title><link rel="preconnect" href="https://fonts.googleapis.com" lexid="24"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="true" lexid="25"><link href="https://fonts.googleapis.com/css2?family=Noto+Music&amp;family=Raleway:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet" lexid="26"><style lexid="27">
+    .greek-note {
+        font-family: "Noto Music", "Symbola", "Quivira", serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 20px;
+        margin: 5px;
+    }
+
+    .long::before,
+    .short::before {
+        display: inline-block;   /* evita colapso */
+        width: 0.6em;            /* mismo ancho para ambos; ajusta si quieres */
+        text-align: center;      /* centra el "_" */
+        line-height: 1em;        /* alineación consistente */
+        vertical-align: baseline;
+    }
+
+    .long::before { content: "_"; }
+    .short::before { content: "\00a0"; } /* NBSP: espacio no colapsable */
+
+    .music {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .playing-note
+    {
+        background-color: rgba(0, 102, 255, 0.554);
+    }
+    .red-error
+    {
+        background-color: rgba(255, 0, 0, 0.55);
+    }
+    
+    .piece, .piece-creator
+    {
+        border: solid black 2px;
+        margin: 3vw;
+        padding: 2vw;
+    }
+    </style><script type="module">(() => {
+  var __defProp = Object.defineProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+
+  // node_modules/@lek-js/lex/lib/lex/index.js
+  var lex_exports = {};
+  __export(lex_exports, {
+    Fragment: () => Fragment,
+    State: () => State,
+    createElement: () => createElement,
+    default: () => lex_default,
+    mount: () => mount,
+    startClient: () => startClient,
+    useClient: () => useClient,
+    useRef: () => useRef,
+    useState: () => useState
+  });
+  var State = class {
+    constructor(initValue) {
+      this._value = initValue;
+      this.onChangesStack = [];
+    }
+    get() {
+      return this._value;
+    }
+    set(newValue) {
+      this._value = newValue;
+      this.onChangesStack.forEach((fn) => fn(newValue));
+    }
+    valueOf() {
+      return this._value;
+    }
+    toString() {
+      return String(this._value);
+    }
+    appendOnChange(fn) {
+      if (typeof fn === "function") this.onChangesStack.push(fn);
+    }
+  };
+  var useState = (initValue) => {
+    const state = new State(initValue);
+    return [state, (newValue) => {
+      state.set(newValue);
+    }];
+  };
+  var useRef = (initValue) => ({ current: initValue });
+  var flattenChildren = (children) => {
+    const result = [];
+    children.forEach((ch) => {
+      if (Array.isArray(ch)) {
+        result.push(...flattenChildren(ch));
+      } else result.push(ch);
+    });
+    return result;
+  };
+  var lexStates = {
+    counter: 0,
+    clientStack: [],
+    selectMode: true
+  };
+  var createElement = (tag, props = {}, ...children) => {
+    if (!props) props = {};
+    props.lexid = lexStates.counter;
+    if (typeof tag === "string") {
+      const element = lexStates.selectMode ? document.querySelector(`[lexid="${props.lexid}"]`) : document.createElement(tag);
+      Object.entries(props).forEach(([key, value]) => {
+        const prop = {
+          type: "attribute",
+          key,
+          value
+        };
+        if (key.startsWith("on") && typeof value === "function") {
+          prop.key = key.toLowerCase();
+          prop.type = "event";
+        } else if (key === "ref" && value instanceof Object) {
+          props.ref.current = element;
+        } else if (key === "className") {
+          prop.key = "class";
+          prop.type = "attribute";
+        } else if (key === "htmlFor") {
+          prop.key = "for";
+          prop.type = "attribute";
+        } else {
+          prop.key = key.toLowerCase();
+          prop.type = "attribute";
+        }
+        const asignProp = () => {
+          if (prop.type === "attribute") {
+            element.setAttribute(prop.key, prop.value);
+          } else if (prop.type === "event") {
+            element[prop.key] = prop.value;
+          }
+        };
+        asignProp();
+        if (value instanceof State) {
+          value.appendOnChange((newValue) => {
+            prop.value = newValue;
+            asignProp();
+          });
+        }
+      });
+      flattenChildren(children).forEach((ch, i) => {
+        if (lexStates.selectMode) {
+          if (ch instanceof State) {
+            const textNode = element.childNodes[i];
+            ch.appendOnChange((newValue) => {
+              textNode.nodeValue = newValue;
+            });
+          }
+        } else {
+          if (ch instanceof window.Node) element.appendChild(ch);
+          else {
+            const textNode = document.createTextNode(String(ch));
+            element.appendChild(textNode);
+            if (ch instanceof State) {
+              ch.appendOnChange((newValue) => {
+                textNode.nodeValue = newValue;
+              });
+            }
+          }
+        }
+      });
+      lexStates.counter++;
+      return element;
+    } else if (typeof tag === "function") {
+      const element = tag({ ...props, children });
+      if (element instanceof Promise) {
+        throw new Error("Lex.createElement doesn't support async components");
+      }
+      return element;
+    }
+  };
+  var Fragment = ({ children }) => children;
+  var useClient = (handler) => {
+    if (typeof handler === "function") {
+      lexStates.clientStack.push(handler);
+    } else {
+      throw new Error("useClient only accepts functions");
+    }
+  };
+  var startClient = () => {
+    if (lexStates.selectMode) {
+      lexStates.selectMode = false;
+      lexStates.clientStack.forEach((handler) => handler());
+      lexStates.clientStack.length = 0;
+    }
+  };
+  var mount = (mainComponent) => {
+    startClient();
+  };
+  var Lex = { createElement, State, useState, useRef, Fragment, useClient, startClient, mount };
+  var lex_default = Lex;
+
+  // node_modules/@lek-js/lex/index.js
+  var lex_default2 = lex_exports;
+
+  // lib/string/index.jsx
+  var useSin = (startFq = 440) => {
+    const refs = { ctx: null, gain: null, osc: null, volume: 0.2, freq: startFq };
+    useClient(() => {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      refs.ctx = new AudioCtx();
+      refs.gain = refs.ctx.createGain();
+      refs.gain.gain.value = 0;
+      refs.gain.connect(refs.ctx.destination);
+    });
+    const start = async () => {
+      if (!refs.ctx || !refs.gain) return;
+      if (refs.ctx.state === "suspended") await refs.ctx.resume();
+      if (refs.osc) return;
+      const osc = refs.ctx.createOscillator();
+      refs.osc = osc;
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(refs.freq, refs.ctx.currentTime);
+      osc.connect(refs.gain);
+      const now = refs.ctx.currentTime;
+      refs.gain.gain.cancelScheduledValues(now);
+      refs.gain.gain.setValueAtTime(refs.gain.gain.value, now);
+      refs.gain.gain.linearRampToValueAtTime(refs.volume, now + 0.02);
+      osc.start();
+    };
+    const stop = () => {
+      if (!refs.osc || !refs.ctx) return;
+      const now = refs.ctx.currentTime;
+      refs.gain.gain.cancelScheduledValues(now);
+      refs.gain.gain.setValueAtTime(refs.gain.gain.value, now);
+      refs.gain.gain.linearRampToValueAtTime(0, now + 0.04);
+      const o = refs.osc;
+      o.stop(now + 0.05);
+      o.onended = () => {
+        try {
+          o.disconnect();
+        } catch {
+        }
+        if (refs.osc === o) refs.osc = null;
+      };
+    };
+    const setFq = (fq) => {
+      refs.freq = Number(fq) || 0;
+      if (refs.osc && refs.ctx) {
+        refs.osc.frequency.setValueAtTime(refs.freq, refs.ctx.currentTime);
+      }
+    };
+    return { start, stop, setFq };
+  };
+  var MusicString = () => {
+    const lengthIptRef = useRef(null);
+    const audio = useSin(440);
+    const stringX1 = 100;
+    const stringX2 = 540;
+    const stringMaxLength = stringX2 - stringX1;
+    const [pole1X, setPole1X] = useState(stringX1);
+    const lengthChangeHandler = () => {
+      const distanceMillimeters = lengthIptRef.current.value || 0;
+      const newPole1X = 540 - 0.44 * distanceMillimeters;
+      setPole1X(newPole1X);
+      const stringRatio = 1e3 / distanceMillimeters;
+      audio.setFq(440 * stringRatio);
+    };
+    return /* @__PURE__ */ lex_default2.createElement("div", null, /* @__PURE__ */ lex_default2.createElement(
+      "input",
+      {
+        type: "number",
+        value: "1000",
+        max: 1e3,
+        min: 0,
+        ref: lengthIptRef,
+        onChange: lengthChangeHandler
+      }
+    ), /* @__PURE__ */ lex_default2.createElement("button", { onClick: audio.start }, "Play"), /* @__PURE__ */ lex_default2.createElement("button", { onClick: audio.stop }, "Stop"), /* @__PURE__ */ lex_default2.createElement("svg", { width: "640", height: "260", viewBox: "0 0 640 260", xmlns: "http://www.w3.org/2000/svg" }, /* @__PURE__ */ lex_default2.createElement("g", { stroke: "#333", "stroke-linecap": "round" }, /* @__PURE__ */ lex_default2.createElement("line", { x1: stringX1, y1: "40", x2: stringX1, y2: "220", "stroke-width": "14" }), /* @__PURE__ */ lex_default2.createElement("line", { x1: pole1X, y1: "40", x2: pole1X, y2: "220", "stroke-width": "14" }), /* @__PURE__ */ lex_default2.createElement("line", { x1: stringX2, y1: "40", x2: stringX2, y2: "220", "stroke-width": "14" })), /* @__PURE__ */ lex_default2.createElement("line", { x1: stringX1, y1: "120", x2: stringX2, y2: "120", stroke: "#000", "stroke-width": "10", "stroke-linecap": "round" })));
+  };
+  var string_default = MusicString;
+
+  // page.jsx
+  var Main = () => {
+    return /* @__PURE__ */ lex_default2.createElement("main", null, /* @__PURE__ */ lex_default2.createElement(string_default, null), /* @__PURE__ */ lex_default2.createElement(string_default, null));
+  };
+  var page_default = Main;
+
+  // layout.jsx
+  var Layout = ({ children }) => /* @__PURE__ */ lex_default2.createElement("html", { lang: "en" }, /* @__PURE__ */ lex_default2.createElement("head", null, /* @__PURE__ */ lex_default2.createElement("meta", { charset: "UTF-8" }), /* @__PURE__ */ lex_default2.createElement("meta", { name: "viewport", content: "width=device-width, initial-scale=1.0" }), /* @__PURE__ */ lex_default2.createElement("title", null, "Document"), /* @__PURE__ */ lex_default2.createElement("link", { rel: "preconnect", href: "https://fonts.googleapis.com" }), /* @__PURE__ */ lex_default2.createElement("link", { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: true }), /* @__PURE__ */ lex_default2.createElement("link", { href: "https://fonts.googleapis.com/css2?family=Noto+Music&family=Raleway:ital,wght@0,100..900;1,100..900&display=swap", rel: "stylesheet" }), /* @__PURE__ */ lex_default2.createElement("style", null, `
+    .greek-note {
+        font-family: "Noto Music", "Symbola", "Quivira", serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 20px;
+        margin: 5px;
+    }
+
+    .long::before,
+    .short::before {
+        display: inline-block;   /* evita colapso */
+        width: 0.6em;            /* mismo ancho para ambos; ajusta si quieres */
+        text-align: center;      /* centra el "_" */
+        line-height: 1em;        /* alineaci\xF3n consistente */
+        vertical-align: baseline;
+    }
+
+    .long::before { content: "_"; }
+    .short::before { content: "\\00a0"; } /* NBSP: espacio no colapsable */
+
+    .music {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .playing-note
+    {
+        background-color: rgba(0, 102, 255, 0.554);
+    }
+    .red-error
+    {
+        background-color: rgba(255, 0, 0, 0.55);
+    }
+    
+    .piece, .piece-creator
+    {
+        border: solid black 2px;
+        margin: 3vw;
+        padding: 2vw;
+    }
+    `)), /* @__PURE__ */ lex_default2.createElement("body", null, children));
+  var layout_default = Layout;
+
+  // <stdin>
+  lex_default2.mount(/* @__PURE__ */ lex_default2.createElement(layout_default, null, /* @__PURE__ */ lex_default2.createElement(page_default, null)));
+})();
+</script></head><body lexid="29"><main lexid="20"><div lexid="9"><input type="number" value="1000" max="1000" min="0" ref="[object Object]" lexid="0"><button lexid="1">Play</button><button lexid="2">Stop</button><svg width="640" height="260" viewbox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" lexid="8"><g stroke="#333" stroke-linecap="round" lexid="6"><line x1="100" y1="40" x2="100" y2="220" stroke-width="14" lexid="3"></line><line x1="100" y1="40" x2="100" y2="220" stroke-width="14" lexid="4"></line><line x1="540" y1="40" x2="540" y2="220" stroke-width="14" lexid="5"></line></g><line x1="100" y1="120" x2="540" y2="120" stroke="#000" stroke-width="10" stroke-linecap="round" lexid="7"></line></svg></div><div lexid="19"><input type="number" value="1000" max="1000" min="0" ref="[object Object]" lexid="10"><button lexid="11">Play</button><button lexid="12">Stop</button><svg width="640" height="260" viewbox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" lexid="18"><g stroke="#333" stroke-linecap="round" lexid="16"><line x1="100" y1="40" x2="100" y2="220" stroke-width="14" lexid="13"></line><line x1="100" y1="40" x2="100" y2="220" stroke-width="14" lexid="14"></line><line x1="540" y1="40" x2="540" y2="220" stroke-width="14" lexid="15"></line></g><line x1="100" y1="120" x2="540" y2="120" stroke="#000" stroke-width="10" stroke-linecap="round" lexid="17"></line></svg></div></main></body></html>
