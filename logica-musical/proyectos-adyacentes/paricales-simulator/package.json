@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "dev": "nodemon --ext js,jsx --exec \"node build.js && node dev-server.js \""
+  },
+  "dependencies": {
+    "@lek-js/lex": "^2.0.0"
+  },
+  "devDependencies": {
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10"
+  }
+}

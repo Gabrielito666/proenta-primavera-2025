@@ -1,0 +1,354 @@
+<html lang="en" lexid="67"><head lexid="65"><meta charset="UTF-8" lexid="58"><meta name="viewport" content="width=device-width, initial-scale=1.0" lexid="59"><title lexid="60">Document</title><link rel="preconnect" href="https://fonts.googleapis.com" lexid="61"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="true" lexid="62"><link href="https://fonts.googleapis.com/css2?family=Noto+Music&amp;family=Raleway:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet" lexid="63"><style lexid="64">
+    .greek-note {
+        font-family: "Noto Music", "Symbola", "Quivira", serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 20px;
+        margin: 5px;
+    }
+
+    .long::before,
+    .short::before {
+        display: inline-block;   /* evita colapso */
+        width: 0.6em;            /* mismo ancho para ambos; ajusta si quieres */
+        text-align: center;      /* centra el "_" */
+        line-height: 1em;        /* alineación consistente */
+        vertical-align: baseline;
+    }
+
+    .long::before { content: "_"; }
+    .short::before { content: "\00a0"; } /* NBSP: espacio no colapsable */
+
+    .music {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .playing-note
+    {
+        background-color: rgba(0, 102, 255, 0.554);
+    }
+    .red-error
+    {
+        background-color: rgba(255, 0, 0, 0.55);
+    }
+    
+    .piece, .piece-creator
+    {
+        border: solid black 2px;
+        margin: 3vw;
+        padding: 2vw;
+    }
+    </style><script type="module">(() => {
+  var __defProp = Object.defineProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+
+  // node_modules/@lek-js/lex/lib/lex/index.js
+  var lex_exports = {};
+  __export(lex_exports, {
+    Fragment: () => Fragment,
+    State: () => State,
+    createElement: () => createElement,
+    default: () => lex_default,
+    mount: () => mount,
+    startClient: () => startClient,
+    useClient: () => useClient,
+    useRef: () => useRef,
+    useState: () => useState
+  });
+  var State = class {
+    constructor(initValue) {
+      this._value = initValue;
+      this.onChangesStack = [];
+    }
+    get() {
+      return this._value;
+    }
+    set(newValue) {
+      this._value = newValue;
+      this.onChangesStack.forEach((fn) => fn(newValue));
+    }
+    valueOf() {
+      return this._value;
+    }
+    toString() {
+      return String(this._value);
+    }
+    appendOnChange(fn) {
+      if (typeof fn === "function") this.onChangesStack.push(fn);
+    }
+  };
+  var useState = (initValue) => {
+    const state = new State(initValue);
+    return [state, (newValue) => {
+      state.set(newValue);
+    }];
+  };
+  var useRef = (initValue) => ({ current: initValue });
+  var flattenChildren = (children) => {
+    const result = [];
+    children.forEach((ch) => {
+      if (Array.isArray(ch)) {
+        result.push(...flattenChildren(ch));
+      } else result.push(ch);
+    });
+    return result;
+  };
+  var lexStates = {
+    counter: 0,
+    clientStack: [],
+    selectMode: true
+  };
+  var createElement = (tag, props = {}, ...children) => {
+    if (!props) props = {};
+    props.lexid = lexStates.counter;
+    if (typeof tag === "string") {
+      const element = lexStates.selectMode ? document.querySelector(`[lexid="${props.lexid}"]`) : document.createElement(tag);
+      Object.entries(props).forEach(([key, value]) => {
+        const prop = {
+          type: "attribute",
+          key,
+          value
+        };
+        if (key.startsWith("on") && typeof value === "function") {
+          prop.key = key.toLowerCase();
+          prop.type = "event";
+        } else if (key === "ref" && value instanceof Object) {
+          props.ref.current = element;
+        } else if (key === "className") {
+          prop.key = "class";
+          prop.type = "attribute";
+        } else if (key === "htmlFor") {
+          prop.key = "for";
+          prop.type = "attribute";
+        } else {
+          prop.key = key.toLowerCase();
+          prop.type = "attribute";
+        }
+        const asignProp = () => {
+          if (prop.type === "attribute") {
+            element.setAttribute(prop.key, prop.value);
+          } else if (prop.type === "event") {
+            element[prop.key] = prop.value;
+          }
+        };
+        asignProp();
+        if (value instanceof State) {
+          value.appendOnChange((newValue) => {
+            prop.value = newValue;
+            asignProp();
+          });
+        }
+      });
+      flattenChildren(children).forEach((ch, i) => {
+        if (lexStates.selectMode) {
+          if (ch instanceof State) {
+            const textNode = element.childNodes[i];
+            ch.appendOnChange((newValue) => {
+              textNode.nodeValue = newValue;
+            });
+          }
+        } else {
+          if (ch instanceof window.Node) element.appendChild(ch);
+          else {
+            const textNode = document.createTextNode(String(ch));
+            element.appendChild(textNode);
+            if (ch instanceof State) {
+              ch.appendOnChange((newValue) => {
+                textNode.nodeValue = newValue;
+              });
+            }
+          }
+        }
+      });
+      lexStates.counter++;
+      return element;
+    } else if (typeof tag === "function") {
+      const element = tag({ ...props, children });
+      if (element instanceof Promise) {
+        throw new Error("Lex.createElement doesn't support async components");
+      }
+      return element;
+    }
+  };
+  var Fragment = ({ children }) => children;
+  var useClient = (handler) => {
+    if (typeof handler === "function") {
+      lexStates.clientStack.push(handler);
+    } else {
+      throw new Error("useClient only accepts functions");
+    }
+  };
+  var startClient = () => {
+    if (lexStates.selectMode) {
+      lexStates.selectMode = false;
+      lexStates.clientStack.forEach((handler) => handler());
+      lexStates.clientStack.length = 0;
+    }
+  };
+  var mount = (mainComponent) => {
+    startClient();
+  };
+  var Lex = { createElement, State, useState, useRef, Fragment, useClient, startClient, mount };
+  var lex_default = Lex;
+
+  // node_modules/@lek-js/lex/index.js
+  var lex_default2 = lex_exports;
+
+  // page.jsx
+  var PARTIALS_QUANTITY = 16;
+  var states = {
+    playing: false,
+    fundamental: 440,
+    partials: Array(PARTIALS_QUANTITY).fill(0)
+  };
+  var anyChangeSignalRef = useRef(null);
+  useClient(() => {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const maxMixGain = 0.9;
+    const master = ctx.createGain();
+    master.gain.value = 1;
+    master.connect(ctx.destination);
+    const activeOscs = [];
+    const activeGains = [];
+    const stopPrevious = () => {
+      activeOscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+        }
+        o.disconnect();
+      });
+      activeGains.forEach((g) => g.disconnect());
+      activeOscs.length = 0;
+      activeGains.length = 0;
+    };
+    anyChangeSignalRef.current = async () => {
+      stopPrevious();
+      if (!states.playing) {
+        return;
+      }
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
+      const perPartialMax = maxMixGain / PARTIALS_QUANTITY;
+      const partials = states.partials.map(
+        (v) => Math.max(0, Math.min(100, Number(v) || 0))
+      );
+      const actives = partials.map((amp, i) => ({ i, amp })).filter((p) => p.amp > 0);
+      if (!actives.length) {
+        return;
+      }
+      actives.forEach(({ i, amp }) => {
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = Math.max(1, Number(states.fundamental) || 0) * (i + 1);
+        const g = ctx.createGain();
+        g.gain.value = amp / 1e3 * perPartialMax;
+        osc.connect(g);
+        g.connect(master);
+        osc.start();
+        activeOscs.push(osc);
+        activeGains.push(g);
+      });
+    };
+  });
+  var FundamentalIpt = () => {
+    const fundamentalIptRef = useRef(null);
+    const fundamentalIptChangeHandler = () => {
+      states.fundamental = fundamentalIptRef.current.value;
+      anyChangeSignalRef.current();
+    };
+    return /* @__PURE__ */ lex_default2.createElement("label", { htmlFor: "fundamental" }, "Frecuencia fundamental:", /* @__PURE__ */ lex_default2.createElement("input", { type: "number", ref: fundamentalIptRef, value: 440, onChange: fundamentalIptChangeHandler }));
+  };
+  var PlayStopButton = () => {
+    const playStopButtonRef = useRef(null);
+    const playStopButtonClickHandler = () => {
+      states.playing = !states.playing;
+      playStopButtonRef.current.innerText = states.playing ? "Stop" : "Play";
+      anyChangeSignalRef.current();
+    };
+    return /* @__PURE__ */ lex_default2.createElement("button", { onClick: playStopButtonClickHandler, ref: playStopButtonRef }, "Play");
+  };
+  var PartialIpt = ({ index }) => {
+    const partialName = "parcial " + index;
+    const partialIptRef = useRef(null);
+    const partialChangeHandler = () => {
+      states.partials[index] = partialIptRef.current.value;
+      anyChangeSignalRef.current();
+    };
+    return /* @__PURE__ */ lex_default2.createElement("label", { htmlFor: partialName }, partialName, /* @__PURE__ */ lex_default2.createElement(
+      "input",
+      {
+        name: partialName,
+        type: "number",
+        min: "0",
+        max: "1000",
+        ref: partialIptRef,
+        value: 0,
+        onChange: partialChangeHandler
+      }
+    ));
+  };
+  var PartialsIpts = () => {
+    return /* @__PURE__ */ lex_default2.createElement(lex_default2.Fragment, null, /* @__PURE__ */ lex_default2.createElement("h3", null, "Paleta de parciales"), Array.from({ length: PARTIALS_QUANTITY }, (_, i) => /* @__PURE__ */ lex_default2.createElement(lex_default2.Fragment, null, /* @__PURE__ */ lex_default2.createElement(PartialIpt, { index: i }), /* @__PURE__ */ lex_default2.createElement("br", null))));
+  };
+  var Main = () => {
+    return /* @__PURE__ */ lex_default2.createElement("main", null, /* @__PURE__ */ lex_default2.createElement("h1", null, "Simulador de parciales"), /* @__PURE__ */ lex_default2.createElement("hr", null), /* @__PURE__ */ lex_default2.createElement(FundamentalIpt, null), /* @__PURE__ */ lex_default2.createElement("br", null), /* @__PURE__ */ lex_default2.createElement("hr", null), /* @__PURE__ */ lex_default2.createElement(PartialsIpts, null), /* @__PURE__ */ lex_default2.createElement("hr", null), /* @__PURE__ */ lex_default2.createElement(PlayStopButton, null));
+  };
+  var page_default = Main;
+
+  // layout.jsx
+  var Layout = ({ children }) => /* @__PURE__ */ lex_default2.createElement("html", { lang: "en" }, /* @__PURE__ */ lex_default2.createElement("head", null, /* @__PURE__ */ lex_default2.createElement("meta", { charset: "UTF-8" }), /* @__PURE__ */ lex_default2.createElement("meta", { name: "viewport", content: "width=device-width, initial-scale=1.0" }), /* @__PURE__ */ lex_default2.createElement("title", null, "Document"), /* @__PURE__ */ lex_default2.createElement("link", { rel: "preconnect", href: "https://fonts.googleapis.com" }), /* @__PURE__ */ lex_default2.createElement("link", { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: true }), /* @__PURE__ */ lex_default2.createElement("link", { href: "https://fonts.googleapis.com/css2?family=Noto+Music&family=Raleway:ital,wght@0,100..900;1,100..900&display=swap", rel: "stylesheet" }), /* @__PURE__ */ lex_default2.createElement("style", null, `
+    .greek-note {
+        font-family: "Noto Music", "Symbola", "Quivira", serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 20px;
+        margin: 5px;
+    }
+
+    .long::before,
+    .short::before {
+        display: inline-block;   /* evita colapso */
+        width: 0.6em;            /* mismo ancho para ambos; ajusta si quieres */
+        text-align: center;      /* centra el "_" */
+        line-height: 1em;        /* alineaci\xF3n consistente */
+        vertical-align: baseline;
+    }
+
+    .long::before { content: "_"; }
+    .short::before { content: "\\00a0"; } /* NBSP: espacio no colapsable */
+
+    .music {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .playing-note
+    {
+        background-color: rgba(0, 102, 255, 0.554);
+    }
+    .red-error
+    {
+        background-color: rgba(255, 0, 0, 0.55);
+    }
+    
+    .piece, .piece-creator
+    {
+        border: solid black 2px;
+        margin: 3vw;
+        padding: 2vw;
+    }
+    `)), /* @__PURE__ */ lex_default2.createElement("body", null, children));
+  var layout_default = Layout;
+
+  // <stdin>
+  lex_default2.mount(/* @__PURE__ */ lex_default2.createElement(layout_default, null, /* @__PURE__ */ lex_default2.createElement(page_default, null)));
+})();
+</script></head><body lexid="66"><main lexid="57"><h1 lexid="0">Simulador de parciales</h1><hr lexid="1"><label for="fundamental" lexid="3">Frecuencia fundamental:<input type="number" ref="[object Object]" value="440" lexid="2"></label><br lexid="4"><hr lexid="5"><h3 lexid="6">Paleta de parciales</h3><label for="parcial 0" lexid="8">parcial 0<input name="parcial 0" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="7"></label><br lexid="9"><label for="parcial 1" lexid="11">parcial 1<input name="parcial 1" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="10"></label><br lexid="12"><label for="parcial 2" lexid="14">parcial 2<input name="parcial 2" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="13"></label><br lexid="15"><label for="parcial 3" lexid="17">parcial 3<input name="parcial 3" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="16"></label><br lexid="18"><label for="parcial 4" lexid="20">parcial 4<input name="parcial 4" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="19"></label><br lexid="21"><label for="parcial 5" lexid="23">parcial 5<input name="parcial 5" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="22"></label><br lexid="24"><label for="parcial 6" lexid="26">parcial 6<input name="parcial 6" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="25"></label><br lexid="27"><label for="parcial 7" lexid="29">parcial 7<input name="parcial 7" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="28"></label><br lexid="30"><label for="parcial 8" lexid="32">parcial 8<input name="parcial 8" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="31"></label><br lexid="33"><label for="parcial 9" lexid="35">parcial 9<input name="parcial 9" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="34"></label><br lexid="36"><label for="parcial 10" lexid="38">parcial 10<input name="parcial 10" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="37"></label><br lexid="39"><label for="parcial 11" lexid="41">parcial 11<input name="parcial 11" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="40"></label><br lexid="42"><label for="parcial 12" lexid="44">parcial 12<input name="parcial 12" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="43"></label><br lexid="45"><label for="parcial 13" lexid="47">parcial 13<input name="parcial 13" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="46"></label><br lexid="48"><label for="parcial 14" lexid="50">parcial 14<input name="parcial 14" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="49"></label><br lexid="51"><label for="parcial 15" lexid="53">parcial 15<input name="parcial 15" type="number" min="0" max="1000" ref="[object Object]" value="0" lexid="52"></label><br lexid="54"><hr lexid="55"><button ref="[object Object]" lexid="56">Play</button></main></body></html>
